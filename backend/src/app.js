@@ -3,6 +3,9 @@ const cors = require('cors');
 const authRoutes = require("./routes/auth.route")
 const cookieParser = require("cookie-parser")
 const marketRoutes = require("./routes/market.route");
+const predictionRoutes = require(
+    "./routes/prediction.route"
+);
 
 
 const app = express();
@@ -17,6 +20,10 @@ app.use(cookieParser())
 
 app.use('/api/auth',authRoutes)
 app.use("/api/market", marketRoutes);
+app.use(
+    "/api/prediction",
+    predictionRoutes
+);
 
 
 module.exports = app;

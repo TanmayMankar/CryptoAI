@@ -1,0 +1,28 @@
+{
+    "sequence_length": 60,
+    "prediction_horizon_minutes": 15,
+    "threshold": 0.0005,
+    "features": [
+        "return_1m",
+        "return_5m",
+        "return_15m",
+        "return_60m",
+        "high_low_range",
+        "candle_body",
+        "upper_wick",
+        "lower_wick",
+        "volume_change",
+        "trade_count_change",
+        "volatility_5m",
+        "volatility_15m",
+        "volatility_60m",
+        "taker_buy_ratio"
+    ],
+    "classes": {
+        "0": "DOWN",
+        "1": "UP"
+    },
+    "model_type": "GRU",
+    "gru_units": 64,
+    "dense_units": 32
+}

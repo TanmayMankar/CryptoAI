@@ -28,6 +28,7 @@ function startBinanceStream(broadcast) {
             close: parseFloat(kline.c),
             volume: parseFloat(kline.v),
             trades: kline.n,
+            takerBuyBaseVolume: parseFloat(kline.V),
             isClosed: kline.x,
         };
 
@@ -51,7 +52,7 @@ function startBinanceStream(broadcast) {
 
 async function getHistoricalKlines() {
     const url =
-        "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=60";
+        "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=120";
 
     const response = await fetch(url);
 
@@ -72,6 +73,7 @@ async function getHistoricalKlines() {
         close: parseFloat(kline[4]),
         volume: parseFloat(kline[5]),
         trades: kline[8],
+        takerBuyBaseVolume: parseFloat(kline[9]),
         isClosed: true,
     }));
 }
