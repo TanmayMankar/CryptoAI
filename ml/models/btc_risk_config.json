@@ -1,0 +1,20 @@
+{
+    "model_type": "GRU",
+    "sequence_length": 60,
+    "threshold": 0.7,
+    "risk_target_threshold": 0.004,
+    "features": [
+        "return_1m",
+        "return_5m",
+        "return_15m",
+        "high_low_range",
+        "candle_body",
+        "upper_wick",
+        "lower_wick",
+        "volume_change",
+        "trade_count_change",
+        "volatility_5m",
+        "volatility_15m",
+        "taker_buy_ratio"
+    ]
+}

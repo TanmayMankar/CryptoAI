@@ -58,7 +58,7 @@ function BTCChart() {
     socket.onmessage = (event) => {
       const candle = JSON.parse(event.data);
 
-      console.log("Live BTC Data:", candle);
+      // console.log("Live BTC Data:", candle);
 
       const newPoint = {
         time: new Date(candle.openTime).toLocaleTimeString([], {

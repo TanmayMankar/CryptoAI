@@ -6,6 +6,8 @@ const marketRoutes = require("./routes/market.route");
 const predictionRoutes = require(
     "./routes/prediction.route"
 );
+const anomalyRoutes = require("./routes/anomaly.route");
+const riskRoutes = require("./routes/risk.route");
 
 
 const app = express();
@@ -24,6 +26,8 @@ app.use(
     "/api/prediction",
     predictionRoutes
 );
+app.use("/api/anomaly", anomalyRoutes);
+app.use("/api/risk", riskRoutes);
 
 
 module.exports = app;
