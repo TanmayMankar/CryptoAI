@@ -16,4 +16,11 @@ router.get(
     predictionController.predictBTC
 );
 
+
+router.get(
+  "/history",
+  authMiddleware,
+  predictionController.getPredictionHistory
+);
+
 module.exports = router;

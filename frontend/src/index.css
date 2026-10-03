@@ -1,1 +1,62 @@
 @import "tailwindcss";
+
+:root {
+  font-family: "Courier New", Courier, monospace;
+  color: #f5f5f5;
+  background: #050505;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+}
+
+body {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(247, 147, 26, 0.08),
+      transparent 35%
+    ),
+    #050505;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: #f7931a;
+  color: #050505;
+}
+
+/* Bitcoin arcade scrollbar */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080808;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #f7931a;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ffab3d;
+}
