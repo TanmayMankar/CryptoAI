@@ -10,4 +10,11 @@ router.get(
     anomalyController.detectAnomaly
 );
 
+
+router.get(
+  "/history",
+  authMiddleware,
+  anomalyController.getAnomalyHistory
+);
+
 module.exports = router;
