@@ -10,4 +10,11 @@ router.get(
     riskController.predictRisk
 );
 
+
+router.get(
+  "/history",
+  authMiddleware,
+  riskController.getRiskHistory
+);
+
 module.exports = router;
