@@ -12,25 +12,73 @@ function Login() {
     password: "",
   });
 
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const { checkAuth } = useAuth();
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+
+    // Remove field error while user is correcting it
+    setErrors({
+      ...errors,
+      [name]: "",
+    });
+
+    // Remove backend error when user starts typing again
+    setError("");
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     setError("");
+    setErrors({});
+
+    const newErrors = {};
+
+    // Username validation
+    if (!formData.username.trim()) {
+      newErrors.username = "Username is required";
+    } else if (formData.username.trim().length < 3) {
+      newErrors.username = "Username must be at least 3 characters";
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+
+    // Stop login if validation failed
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await api.post("/api/auth/login", formData);
+      const response = await api.post("/api/auth/login", {
+        username: formData.username.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+      });
 
       await checkAuth();
 
@@ -90,7 +138,7 @@ function Login() {
           <div className="flex-1 h-px bg-orange-500/10" />
         </div>
 
-        {/* Error */}
+        {/* Backend Error */}
         {error && (
           <div className="mb-5 p-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-md text-sm">
             <div className="flex items-center gap-2">
@@ -112,9 +160,17 @@ function Login() {
             placeholder="Enter username"
             value={formData.username}
             onChange={handleChange}
-            className="w-full px-4 py-3 bg-[#050505] border border-gray-800 rounded-md text-gray-200 placeholder-gray-700 outline-none transition-all duration-200 focus:border-orange-500/60 focus:shadow-[0_0_12px_rgba(247,147,26,0.08)]"
+            className={`w-full px-4 py-3 bg-[#050505] border rounded-md text-gray-200 placeholder-gray-700 outline-none transition-all duration-200 ${
+              errors.username
+                ? "border-red-500/60"
+                : "border-gray-800 focus:border-orange-500/60 focus:shadow-[0_0_12px_rgba(247,147,26,0.08)]"
+            }`}
             required
           />
+
+          {errors.username && (
+            <p className="mt-2 text-[10px] text-red-400">⚠ {errors.username}</p>
+          )}
         </div>
 
         {/* Email */}
@@ -124,14 +180,22 @@ function Login() {
           </label>
 
           <input
-            type="text"
+            type="email"
             name="email"
             placeholder="Enter email"
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-4 py-3 bg-[#050505] border border-gray-800 rounded-md text-gray-200 placeholder-gray-700 outline-none transition-all duration-200 focus:border-orange-500/60 focus:shadow-[0_0_12px_rgba(247,147,26,0.08)]"
+            className={`w-full px-4 py-3 bg-[#050505] border rounded-md text-gray-200 placeholder-gray-700 outline-none transition-all duration-200 ${
+              errors.email
+                ? "border-red-500/60"
+                : "border-gray-800 focus:border-orange-500/60 focus:shadow-[0_0_12px_rgba(247,147,26,0.08)]"
+            }`}
             required
           />
+
+          {errors.email && (
+            <p className="mt-2 text-[10px] text-red-400">⚠ {errors.email}</p>
+          )}
         </div>
 
         {/* Password */}
@@ -146,9 +210,17 @@ function Login() {
             placeholder="Enter password"
             value={formData.password}
             onChange={handleChange}
-            className="w-full px-4 py-3 bg-[#050505] border border-gray-800 rounded-md text-gray-200 placeholder-gray-700 outline-none transition-all duration-200 focus:border-orange-500/60 focus:shadow-[0_0_12px_rgba(247,147,26,0.08)]"
+            className={`w-full px-4 py-3 bg-[#050505] border rounded-md text-gray-200 placeholder-gray-700 outline-none transition-all duration-200 ${
+              errors.password
+                ? "border-red-500/60"
+                : "border-gray-800 focus:border-orange-500/60 focus:shadow-[0_0_12px_rgba(247,147,26,0.08)]"
+            }`}
             required
           />
+
+          {errors.password && (
+            <p className="mt-2 text-[10px] text-red-400">⚠ {errors.password}</p>
+          )}
         </div>
 
         {/* Login button */}
@@ -174,6 +246,7 @@ function Login() {
         {/* Bottom status */}
         <div className="mt-6 pt-4 border-t border-gray-900 flex items-center justify-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_7px_rgba(74,222,128,0.8)]" />
+
           <span className="text-[8px] text-gray-700 tracking-[0.25em]">
             SECURE CONNECTION
           </span>
