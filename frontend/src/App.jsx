@@ -12,6 +12,7 @@ import WhaleActivity from "./pages/WhaleActivity";
 import Anomalies from "./pages/Anomalies";
 import RiskAnalysis from "./pages/RiskAnalysis";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -81,6 +82,17 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <RiskAnalysis />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Profile />
               </DashboardLayout>
             </ProtectedRoute>
           }

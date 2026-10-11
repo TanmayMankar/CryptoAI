@@ -10,7 +10,9 @@ export function AuthProvider({ children }) {
   const checkAuth = async () => {
     try {
       const response = await api.get("/api/auth/me");
+      console.log("Logged in user:", response.data.user);
       setUser(response.data.user);
+      
     } catch (error) {
       setUser(null);
     } finally {

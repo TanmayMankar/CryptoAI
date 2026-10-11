@@ -7,6 +7,7 @@ function Sidebar() {
     { name: "Whale Activity", path: "/whales", icon: "🐋" },
     { name: "Anomalies", path: "/anomalies", icon: "⚠️" },
     { name: "Risk Analysis", path: "/risk", icon: "🛡️" },
+    { name: "Profile", path: "/profile", icon: "👤" },
   ];
 
   return (

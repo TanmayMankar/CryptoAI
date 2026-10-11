@@ -78,7 +78,9 @@ async function logoutUser(req,res){
 async function getUser(req,res){
 
 
-    const user = await userModel.findById(req.user.id)
+    const user = await userModel
+    .findById(req.user.id)
+    .select("-password");
 
 
     if(!user){
