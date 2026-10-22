@@ -1,0 +1,24 @@
+{
+  "model_type": "Isolation Forest",
+  "feature_version": "log_ratio",
+  "features": [
+    "return_1m",
+    "return_5m",
+    "return_15m",
+    "high_low_range",
+    "candle_body",
+    "upper_wick",
+    "lower_wick",
+    "volume_change",
+    "trade_count_change",
+    "volatility_5m",
+    "volatility_15m",
+    "taker_buy_ratio"
+  ],
+  "threshold": 7.37694890398061e-18,
+  "threshold_percentile": 5,
+  "score_direction": "lower_is_more_anomalous",
+  "training_samples": 2939440,
+  "contamination": 0.05,
+  "random_state": 42
+}

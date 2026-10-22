@@ -8,6 +8,7 @@ const predictionRoutes = require(
 );
 const anomalyRoutes = require("./routes/anomaly.route");
 const riskRoutes = require("./routes/risk.route");
+const activityRoutes = require("./routes/activity.route");
 
 
 const app = express();
@@ -28,6 +29,7 @@ app.use(
 );
 app.use("/api/anomaly", anomalyRoutes);
 app.use("/api/risk", riskRoutes);
+app.use("/api/activity", activityRoutes);
 
 
 module.exports = app;

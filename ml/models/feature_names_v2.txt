@@ -1,0 +1,16 @@
+return_1m
+return_5m
+return_15m
+return_60m
+volume_ratio_5m
+volume_ratio_60m
+quote_volume_ratio_60m
+trades_ratio_5m
+trades_ratio_60m
+buy_ratio_avg_5m
+buy_ratio_avg_60m
+buy_pressure_change
+volatility_15m
+volatility_60m
+candle_range_prev
+candle_body_prev

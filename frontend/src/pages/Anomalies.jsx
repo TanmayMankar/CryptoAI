@@ -1,5 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
+
+const formatScore = (value) => {
+  if (
+    value === null ||
+    value === undefined ||
+    !Number.isFinite(Number(value))
+  ) {
+    return "--";
+  }
+
+  return Number(value).toExponential(4);
+};
 
 function Anomalies() {
   const [anomaly, setAnomaly] = useState(null);
@@ -7,42 +19,47 @@ function Anomalies() {
   const [error, setError] = useState("");
   const [anomalyHistory, setAnomalyHistory] = useState([]);
 
+  const fetchAnomaly = useCallback(async () => {
+    try {
+      setError("");
+
+      const response = await api.get("/api/anomaly");
+      const result = response.data?.anomaly;
+
+      if (!result) {
+        throw new Error("The anomaly API returned no result.");
+      }
+
+      setAnomaly(result);
+      return result;
+    } catch (err) {
+      console.error("Anomaly fetch error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to load anomaly analysis.",
+      );
+
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchAnomalyHistory = useCallback(async () => {
+    try {
+      const response = await api.get("/api/anomaly/history");
+      setAnomalyHistory(response.data?.history ?? []);
+    } catch (err) {
+      console.error("Failed to fetch anomaly history:", err);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchAnomaly = async () => {
-      try {
-        setError("");
-
-        const response = await api.get("/api/anomaly");
-
-        setAnomaly(response.data.anomaly);
-        return response.data.anomaly;
-      } catch (err) {
-        console.error("Anomaly fetch error:", err);
-
-        setError(
-          err.response?.data?.message || "Unable to load anomaly analysis.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-
-    const fetchAnomalyHistory = async () => {
-      try {
-        const response = await api.get("/api/anomaly/history");
-
-        setAnomalyHistory(response.data.history);
-      } catch (error) {
-        console.error("Failed to fetch anomaly history:", error);
-      }
-    };
-
-    // Get current anomaly immediately
     fetchAnomaly();
     fetchAnomalyHistory();
 
-    // Listen for live Binance candle updates
     const socket = new WebSocket("ws://localhost:3000");
 
     socket.onopen = () => {
@@ -50,24 +67,27 @@ function Anomalies() {
     };
 
     socket.onmessage = (event) => {
-      const candle = JSON.parse(event.data);
+      try {
+        const candle = JSON.parse(event.data);
 
-      console.log("Anomaly candle:", candle);
+        if (candle.isClosed === true) {
+          console.log("Candle closed. Refreshing anomaly analysis.");
 
-      // Run anomaly detection only after candle closes
-      if (candle.isClosed === true) {
-        console.log("Candle closed. Fetching new anomaly analysis...");
+          setLoading(true);
 
-        setLoading(true);
-
-        fetchAnomaly().then(() => {
-          fetchAnomalyHistory();
-        });
+          fetchAnomaly().then((result) => {
+            if (result) {
+              fetchAnomalyHistory();
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Invalid WebSocket message:", err);
       }
     };
 
-    socket.onerror = (error) => {
-      console.error("Anomaly WebSocket error:", error);
+    socket.onerror = (err) => {
+      console.error("Anomaly WebSocket error:", err);
     };
 
     socket.onclose = () => {
@@ -77,23 +97,24 @@ function Anomalies() {
     return () => {
       socket.close();
     };
-  }, []);
+  }, [fetchAnomaly, fetchAnomalyHistory]);
 
-  const score = anomaly?.anomaly_score ?? 0;
-  const threshold = anomaly?.threshold ?? 0.7350797653;
-  const severity = anomaly?.severity ?? "NORMAL";
-  const isAnomaly = anomaly?.is_anomaly ?? false;
+  // Support both the new Isolation Forest response and existing history fields.
+  const score = Number(anomaly?.score ?? anomaly?.anomaly_score);
+  const threshold = Number(anomaly?.threshold);
+  const isAnomaly = Boolean(anomaly?.anomaly ?? anomaly?.is_anomaly);
 
-  const scorePercentage = Math.min((score / threshold) * 100, 100);
+  const severity = anomaly?.severity ?? (isAnomaly ? "HIGH" : "NORMAL");
+
+  const scoreIsValid = Number.isFinite(score);
+  const thresholdIsValid = Number.isFinite(threshold);
 
   const severityColor =
     severity === "NORMAL"
       ? "text-green-400"
       : severity === "MODERATE"
         ? "text-yellow-400"
-        : severity === "HIGH"
-          ? "text-red-400"
-          : "text-red-500";
+        : "text-red-400";
 
   const severityBorder =
     severity === "NORMAL"
@@ -109,9 +130,17 @@ function Anomalies() {
         ? "bg-yellow-500/5"
         : "bg-red-500/5";
 
+  const formatTime = (value) => {
+    if (!value) return "--";
+
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime()) ? "--" : date.toLocaleString();
+  };
+
   return (
     <div className="min-h-full text-gray-200">
-      {/* HEADER */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-2xl font-bold tracking-wider">
@@ -131,7 +160,7 @@ function Anomalies() {
           />
 
           <span className="text-[9px] tracking-widest text-gray-500">
-            {loading ? "ANALYZING" : error ? "OFFLINE" : "SYSTEM ACTIVE"}
+            {loading ? "ANALYZING" : error ? "ERROR" : "SYSTEM ACTIVE"}
           </span>
         </div>
       </div>
@@ -142,9 +171,9 @@ function Anomalies() {
         </div>
       )}
 
-      {/* MAIN STATUS GRID */}
+      {/* Main status cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {/* SCORE */}
+        {/* Anomaly score */}
         <div className="bg-[#080808] border border-gray-900 rounded-md p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-[9px] tracking-[0.2em] text-gray-600">
@@ -154,39 +183,24 @@ function Anomalies() {
             <span className="text-[9px] text-gray-700">MODEL OUTPUT</span>
           </div>
 
-          <div className="flex items-end gap-2 mb-4">
-            <span className="text-4xl font-bold text-white">
-              {loading ? "--" : score.toFixed(4)}
-            </span>
+          <div className="text-2xl font-bold text-white mb-3 break-all">
+            {loading ? "--" : formatScore(score)}
+          </div>
 
-            <span className="text-xs text-gray-600 mb-1">
-              / {threshold.toFixed(4)}
+          <div className="text-xs text-gray-500 mb-4">
+            Decision threshold:{" "}
+            <span className="text-gray-300">
+              {loading ? "--" : formatScore(threshold)}
             </span>
           </div>
 
-          {/* SCORE BAR */}
-          <div className="h-2 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                severity === "NORMAL"
-                  ? "bg-green-400"
-                  : severity === "MODERATE"
-                    ? "bg-yellow-400"
-                    : "bg-red-500"
-              }`}
-              style={{
-                width: `${scorePercentage}%`,
-              }}
-            />
-          </div>
-
-          <div className="flex justify-between mt-2 text-[8px] text-gray-700 tracking-wider">
-            <span>0.0000</span>
-            <span>THRESHOLD {threshold.toFixed(4)}</span>
+          <div className="text-[10px] text-gray-600 leading-relaxed">
+            Lower decision scores indicate more anomalous observations. An alert
+            is raised when the score falls below the threshold.
           </div>
         </div>
 
-        {/* CURRENT STATUS */}
+        {/* Current status */}
         <div
           className={`bg-[#080808] border ${severityBorder} rounded-md p-5 ${severityBg}`}
         >
@@ -211,11 +225,11 @@ function Anomalies() {
               ? "Analyzing recent market behavior..."
               : isAnomaly
                 ? "Unusual market behavior detected."
-                : "No unusual market activity detected."}
+                : "No unusual behavior flagged by the model."}
           </p>
         </div>
 
-        {/* SEVERITY */}
+        {/* Severity */}
         <div className="bg-[#080808] border border-gray-900 rounded-md p-5">
           <div className="text-[9px] tracking-[0.2em] text-gray-600 mb-4">
             SEVERITY LEVEL
@@ -225,44 +239,14 @@ function Anomalies() {
             {loading ? "..." : severity}
           </div>
 
-          <div className="mt-5 grid grid-cols-4 gap-1">
-            <div
-              className={`h-1.5 rounded ${
-                severity === "NORMAL" ? "bg-green-400" : "bg-gray-900"
-              }`}
-            />
-
-            <div
-              className={`h-1.5 rounded ${
-                severity === "MODERATE" ? "bg-yellow-400" : "bg-gray-900"
-              }`}
-            />
-
-            <div
-              className={`h-1.5 rounded ${
-                severity === "HIGH" ? "bg-red-400" : "bg-gray-900"
-              }`}
-            />
-
-            <div
-              className={`h-1.5 rounded ${
-                severity === "EXTREME" ? "bg-red-600" : "bg-gray-900"
-              }`}
-            />
-          </div>
-
-          <div className="grid grid-cols-4 mt-2 text-[7px] text-gray-700 text-center">
-            <span>NORMAL</span>
-            <span>MODERATE</span>
-            <span>HIGH</span>
-            <span>EXTREME</span>
-          </div>
+          <p className="text-xs text-gray-600 mt-3">
+            Severity classification returned by the ML service.
+          </p>
         </div>
       </div>
 
-      {/* ANALYSIS + MODEL STATUS */}
+      {/* Analysis parameters and model status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        {/* ANALYSIS PARAMETERS */}
         <div className="bg-[#080808] border border-gray-900 rounded-md">
           <div className="px-5 py-4 border-b border-gray-900">
             <h2 className="text-sm font-bold tracking-wider">
@@ -281,29 +265,32 @@ function Anomalies() {
             </div>
 
             <div className="bg-[#0b0b0b] border border-gray-900 rounded p-3">
-              <p className="text-[8px] text-gray-700 tracking-widest">WINDOW</p>
-              <p className="text-sm font-bold text-gray-300 mt-1">60 CANDLES</p>
+              <p className="text-[8px] text-gray-700 tracking-widest">MODEL</p>
+              <p className="text-sm font-bold text-gray-300 mt-1">
+                Isolation Forest
+              </p>
+            </div>
+
+            <div className="bg-[#0b0b0b] border border-gray-900 rounded p-3">
+              <p className="text-[8px] text-gray-700 tracking-widest">
+                FEATURES
+              </p>
+              <p className="text-sm font-bold text-gray-300 mt-1">
+                {anomaly?.features_used ?? 12}
+              </p>
             </div>
 
             <div className="bg-[#0b0b0b] border border-gray-900 rounded p-3">
               <p className="text-[8px] text-gray-700 tracking-widest">
                 THRESHOLD
               </p>
-              <p className="text-sm font-bold text-gray-300 mt-1">
-                {threshold.toFixed(4)}
-              </p>
-            </div>
-
-            <div className="bg-[#0b0b0b] border border-gray-900 rounded p-3">
-              <p className="text-[8px] text-gray-700 tracking-widest">SCORE</p>
-              <p className={`text-sm font-bold mt-1 ${severityColor}`}>
-                {score.toFixed(4)}
+              <p className="text-sm font-bold text-gray-300 mt-1 break-all">
+                {loading ? "--" : formatScore(threshold)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* MODEL STATUS */}
         <div className="bg-[#080808] border border-gray-900 rounded-md">
           <div className="px-5 py-4 border-b border-gray-900">
             <h2 className="text-sm font-bold tracking-wider">MODEL STATUS</h2>
@@ -317,20 +304,26 @@ function Anomalies() {
             <div className="flex items-center justify-between bg-[#0b0b0b] border border-gray-900 rounded px-4 py-3">
               <span className="text-xs text-gray-500">DETECTION ENGINE</span>
 
-              <span className="text-xs font-bold text-green-400">● ONLINE</span>
+              <span
+                className={`text-xs font-bold ${
+                  error ? "text-red-400" : "text-green-400"
+                }`}
+              >
+                {error ? "● ERROR" : "● CONNECTED"}
+              </span>
             </div>
 
             <div className="flex items-center justify-between bg-[#0b0b0b] border border-gray-900 rounded px-4 py-3">
               <span className="text-xs text-gray-500">MODEL</span>
-
-              <span className="text-xs font-bold text-gray-300">GRU</span>
+              <span className="text-xs font-bold text-gray-300">
+                ISOLATION FOREST
+              </span>
             </div>
 
             <div className="flex items-center justify-between bg-[#0b0b0b] border border-gray-900 rounded px-4 py-3">
-              <span className="text-xs text-gray-500">INPUT WINDOW</span>
-
+              <span className="text-xs text-gray-500">FEATURE COUNT</span>
               <span className="text-xs font-bold text-gray-300">
-                60 × 1 MIN
+                {anomaly?.features_used ?? 12}
               </span>
             </div>
 
@@ -339,18 +332,21 @@ function Anomalies() {
 
               <span
                 className={`text-xs font-bold ${
-                  isAnomaly ? "text-red-400" : "text-green-400"
+                  loading
+                    ? "text-yellow-400"
+                    : isAnomaly
+                      ? "text-red-400"
+                      : "text-green-400"
                 }`}
               >
-                {isAnomaly ? "DETECTED" : "CLEAR"}
+                {loading ? "ANALYZING" : isAnomaly ? "DETECTED" : "CLEAR"}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* RECENT EVENTS */}
-      {/* RECENT EVENTS */}
+      {/* Recent anomaly history */}
       <div className="bg-[#080808] border border-gray-900 rounded-md">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-900">
           <div>
@@ -368,7 +364,6 @@ function Anomalies() {
           </span>
         </div>
 
-        {/* Column headings */}
         <div className="grid grid-cols-12 items-center px-5 py-3 border-b border-gray-900 text-[9px] font-bold tracking-widest text-gray-600">
           <span className="col-span-1">#</span>
           <span className="col-span-3">STATUS</span>
@@ -380,91 +375,67 @@ function Anomalies() {
         <div className="p-3">
           {anomalyHistory.length > 0 ? (
             anomalyHistory.map((item, index) => {
-              const isNormal = item.severity === "NORMAL";
+              const itemIsAnomaly = Boolean(item.is_anomaly);
+              const itemSeverity = item.severity ?? "NORMAL";
 
-              const severityColor =
-                item.severity === "NORMAL"
+              const itemSeverityColor =
+                itemSeverity === "NORMAL"
                   ? "text-green-400"
-                  : item.severity === "MODERATE"
+                  : itemSeverity === "MODERATE"
                     ? "text-yellow-400"
-                    : item.severity === "HIGH"
-                      ? "text-red-400"
-                      : "text-red-500";
+                    : "text-red-400";
 
-              const severityBg =
-                item.severity === "NORMAL"
+              const itemSeverityBg =
+                itemSeverity === "NORMAL"
                   ? "bg-green-500/5 border-green-500/20"
-                  : item.severity === "MODERATE"
+                  : itemSeverity === "MODERATE"
                     ? "bg-yellow-500/5 border-yellow-500/20"
                     : "bg-red-500/5 border-red-500/20";
 
               return (
                 <div
-                  key={item._id}
+                  key={item._id ?? `${item.candle_open_time}-${index}`}
                   className="grid grid-cols-12 items-center px-4 py-3 mb-2 last:mb-0 bg-[#0b0b0b] border border-gray-900 rounded-md"
                 >
-                  {/* Number */}
                   <div className="col-span-1">
                     <span className="inline-flex items-center justify-center w-7 h-7 rounded bg-[#111111] border border-gray-800 text-[10px] font-bold text-gray-500">
                       {index + 1}
                     </span>
                   </div>
 
-                  {/* Status */}
-                  <div className="col-span-3 flex items-center gap-3">
+                  <div className="col-span-3 flex items-center gap-2">
                     <span
                       className={`w-2.5 h-2.5 rounded-full ${
-                        item.is_anomaly ? "bg-red-500" : "bg-green-400"
+                        itemIsAnomaly ? "bg-red-500" : "bg-green-400"
                       }`}
                     />
 
                     <span
-                      className={`text-sm font-bold tracking-wider ${
-                        item.is_anomaly ? "text-red-400" : "text-green-400"
+                      className={`text-xs font-bold tracking-wider ${
+                        itemIsAnomaly ? "text-red-400" : "text-green-400"
                       }`}
                     >
-                      {item.is_anomaly ? "ANOMALY" : "NORMAL"}
+                      {itemIsAnomaly ? "ANOMALY" : "NORMAL"}
                     </span>
                   </div>
 
-                  {/* Severity */}
                   <div className="col-span-3">
                     <span
-                      className={`inline-flex px-2.5 py-1 rounded border text-[10px] font-bold tracking-wider ${severityColor} ${severityBg}`}
+                      className={`inline-flex px-2 py-1 rounded border text-[10px] font-bold tracking-wider ${itemSeverityColor} ${itemSeverityBg}`}
                     >
-                      {item.severity}
+                      {itemSeverity}
                     </span>
                   </div>
 
-                  {/* Score */}
-                  <div className="col-span-3 flex items-center gap-3">
-                    <span className="text-sm font-bold text-gray-200">
-                      {item.anomaly_score.toFixed(4)}
+                  <div className="col-span-3">
+                    <span className="text-xs font-bold text-gray-200 break-all">
+                      {formatScore(item.anomaly_score)}
                     </span>
-
-                    <div className="hidden lg:block w-20 h-1.5 bg-gray-900 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          isNormal
-                            ? "bg-green-400"
-                            : item.severity === "MODERATE"
-                              ? "bg-yellow-400"
-                              : "bg-red-500"
-                        }`}
-                        style={{
-                          width: `${Math.min(
-                            (item.anomaly_score / item.threshold) * 100,
-                            100,
-                          )}%`,
-                        }}
-                      />
-                    </div>
                   </div>
 
-                  {/* Time */}
                   <div className="col-span-2 text-right">
-                    <span className="text-xs text-gray-500">
-                      {new Date(item.candle_close_time).toLocaleTimeString()}
+                    <span className="text-[10px] text-gray-500">
+                      {formatTime(item.candle_close_time)}
                     </span>
                   </div>
                 </div>

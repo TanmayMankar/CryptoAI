@@ -21,7 +21,7 @@ const riskSchema = new mongoose.Schema(
     risk_level: {
       type: String,
       required: true,
-      enum: ["NORMAL", "MODERATE", "HIGH", "EXTREME"],
+      enum: ["NORMAL", "HIGH RISK"],
     },
 
     is_high_risk: {
@@ -47,7 +47,7 @@ const riskSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("Risk", riskSchema);

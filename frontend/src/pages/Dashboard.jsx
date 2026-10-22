@@ -237,6 +237,46 @@ function Dashboard() {
     };
   }, []);
 
+
+  
+const [whaleActivity, setWhaleActivity] = useState(null);
+
+
+useEffect(() => {
+  let isMounted = true;
+
+  async function fetchWhaleActivity() {
+    try {
+      const response = await fetch("http://localhost:3000/api/activity", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch activity");
+      }
+
+      const result = await response.json();
+
+      if (isMounted && result.success) {
+        setWhaleActivity(result.data);
+      }
+    } catch (error) {
+      console.error("Whale activity error:", error);
+    }
+  }
+
+  fetchWhaleActivity();
+
+  const intervalId = setInterval(fetchWhaleActivity, 60_000);
+
+  return () => {
+    isMounted = false;
+    clearInterval(intervalId);
+  };
+}, []);
+
+
+
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col gap-4 text-gray-100">
       {/* Header */}
@@ -457,16 +497,49 @@ function Dashboard() {
 
           {/* Whale Activity */}
           <div className="bg-[#0a0a0a] border border-orange-500/20 rounded-lg p-4 hover:border-orange-500/40 transition-colors">
-            <p className="text-gray-400 text-[10px] uppercase tracking-widest">
-              🐋 Whale Activity
+            <div className="flex items-center justify-between">
+              <p className="text-gray-400 text-[10px] uppercase tracking-widest">
+                🐋 Whale Activity
+              </p>
+
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  whaleActivity
+                    ? whaleActivity.high_activity
+                      ? "bg-red-500"
+                      : "bg-emerald-400"
+                    : "bg-gray-500"
+                }`}
+              />
+            </div>
+
+            <p
+              className={`text-lg font-black mt-2 ${
+                whaleActivity
+                  ? whaleActivity.high_activity
+                    ? "text-red-400"
+                    : "text-emerald-400"
+                  : "text-gray-400"
+              }`}
+            >
+              {!whaleActivity
+                ? "Loading..."
+                : whaleActivity.high_activity
+                  ? "High Activity"
+                  : "Normal"}
             </p>
 
-            <p className="text-lg font-black mt-2 text-gray-200">Normal</p>
-
-            <p className="text-gray-600 text-[10px] mt-1">No major movement</p>
+            <p className="text-gray-500 text-[10px] mt-1">
+              {!whaleActivity
+                ? "Fetching market data..."
+                : `Activity probability: ${(
+                    whaleActivity.activity_probability * 100
+                  ).toFixed(2)}%`}
+            </p>
           </div>
 
           {/* Anomalies */}
+
           <div className="bg-[#0a0a0a] border border-orange-500/20 rounded-lg p-4 hover:border-orange-500/40 transition-colors">
             <div className="flex items-center justify-between">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
@@ -476,7 +549,7 @@ function Dashboard() {
               {anomaly && (
                 <span
                   className={`h-2 w-2 rounded-full shadow-[0_0_8px_currentColor] ${
-                    anomaly.is_anomaly
+                    (anomaly.anomaly ?? anomaly.is_anomaly)
                       ? "bg-red-500 text-red-500"
                       : "bg-green-500 text-green-500"
                   }`}
@@ -488,48 +561,77 @@ function Dashboard() {
               <div className="mt-4 text-sm text-gray-500">Detecting...</div>
             ) : anomaly ? (
               <>
-                <div className="mt-3">
-                  <p
-                    className={`text-xl font-black ${
-                      anomaly.is_anomaly ? "text-red-400" : "text-green-400"
-                    }`}
-                  >
-                    {anomaly.severity}
-                  </p>
+                {/*
+        Isolation Forest uses:
+        anomaly = boolean
+        score = decision_function score
+        Lower scores indicate more anomalous observations.
+      */}
+                {(() => {
+                  const isAnomaly = Boolean(
+                    anomaly.anomaly ?? anomaly.is_anomaly,
+                  );
 
-                  <p className="mt-1 text-[10px] text-gray-600">
-                    {anomaly.is_anomaly
-                      ? "Unusual market behavior detected"
-                      : "No unusual market behavior"}
-                  </p>
-                </div>
+                  const score = Number(anomaly.score ?? anomaly.anomaly_score);
 
-                <div className="mt-3">
-                  <div className="flex justify-between text-[10px] text-gray-600">
-                    <span>Anomaly Score</span>
-                    <span className="text-gray-400">
-                      {Number(anomaly.anomaly_score).toFixed(4)}
-                    </span>
-                  </div>
+                  const threshold = Number(anomaly.threshold);
 
-                  <div className="mt-1 flex justify-between text-[10px] text-gray-600">
-                    <span>Threshold</span>
-                    <span className="text-gray-400">
-                      {Number(anomaly.threshold).toFixed(4)}
-                    </span>
-                  </div>
-                </div>
+                  return (
+                    <>
+                      <div className="mt-3">
+                        <p
+                          className={`text-xl font-black ${
+                            isAnomaly ? "text-red-400" : "text-green-400"
+                          }`}
+                        >
+                          {anomaly.severity ?? (isAnomaly ? "HIGH" : "NORMAL")}
+                        </p>
 
-                {anomalyUpdatedAt && (
-                  <p className="mt-3 text-[10px] text-gray-700">
-                    Updated{" "}
-                    {anomalyUpdatedAt.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </p>
-                )}
+                        <p className="mt-1 text-[10px] text-gray-600">
+                          {isAnomaly
+                            ? "Unusual market behavior detected"
+                            : "No unusual market behavior flagged"}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 space-y-2">
+                        <div className="flex justify-between items-start gap-3 text-[10px] text-gray-600">
+                          <span>Anomaly Score</span>
+                          <span className="text-gray-300 text-right break-all">
+                            {Number.isFinite(score)
+                              ? score.toExponential(4)
+                              : "--"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-start gap-3 text-[10px] text-gray-600">
+                          <span>Decision Threshold</span>
+                          <span className="text-gray-300 text-right break-all">
+                            {Number.isFinite(threshold)
+                              ? threshold.toExponential(4)
+                              : "--"}
+                          </span>
+                        </div>
+
+                        <p className="text-[9px] text-gray-600 leading-relaxed">
+                          Isolation Forest flags an observation when its
+                          decision score falls below the configured threshold.
+                        </p>
+                      </div>
+
+                      {anomalyUpdatedAt && (
+                        <p className="mt-3 text-[10px] text-gray-700">
+                          Updated{" "}
+                          {anomalyUpdatedAt.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             ) : (
               <div className="mt-4 text-sm text-gray-500">No anomaly data</div>

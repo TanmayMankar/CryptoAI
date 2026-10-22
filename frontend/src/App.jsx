@@ -13,6 +13,7 @@ import Anomalies from "./pages/Anomalies";
 import RiskAnalysis from "./pages/RiskAnalysis";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
+import About from "./pages/About";
 
 function App() {
   return (
@@ -93,6 +94,17 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <Profile />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/about"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <About />
               </DashboardLayout>
             </ProtectedRoute>
           }

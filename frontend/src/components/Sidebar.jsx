@@ -8,6 +8,7 @@ function Sidebar() {
     { name: "Anomalies", path: "/anomalies", icon: "⚠️" },
     { name: "Risk Analysis", path: "/risk", icon: "🛡️" },
     { name: "Profile", path: "/profile", icon: "👤" },
+    { name: "About", path: "/about", icon: "ℹ️" },
   ];
 
   return (
