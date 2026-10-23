@@ -6,7 +6,7 @@ from src.gru_predictor import GRUPredictor
 from src.isolation_forest_predictor import IsolationForestPredictor
 from src.risk_predictor import RiskPredictor
 from src.activity_predictor import ActivityPredictor
-from src.analyze_crypto_news import analyze_crypto_news
+
 
 app = Flask(__name__)
 
@@ -104,42 +104,6 @@ def activity():
         print("Activity prediction error:", error)
         return jsonify({
             "message": "Activity prediction failed",
-            "error": str(error)
-        }), 500
-
-
-@app.route("/sentiment", methods=["GET"])
-def sentiment():
-    try:
-        results = analyze_crypto_news(limit_per_source=10)
-
-        counts = {
-            "positive": 0,
-            "negative": 0,
-            "neutral": 0
-        }
-
-        for article in results:
-            counts[article["sentiment"]] += 1
-
-        total = len(results)
-
-        return jsonify({
-            "status": "success",
-            "total_articles": total,
-            "sentiment_counts": counts,
-            "sentiment_percentages": {
-                label: round(count / total * 100, 2)
-                if total else 0
-                for label, count in counts.items()
-            },
-            "articles": results
-        })
-
-    except Exception as error:
-        print("Sentiment analysis error:", error)
-        return jsonify({
-            "message": "Sentiment analysis failed",
             "error": str(error)
         }), 500
 
